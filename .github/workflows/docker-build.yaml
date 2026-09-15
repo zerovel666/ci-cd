@@ -3,8 +3,6 @@ name: Build and Deploy
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build-and-deploy:
@@ -16,13 +14,12 @@ jobs:
         run: docker build -t fastapi-app:${{ github.sha }} .
       
       - name: Deploy to server
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key root@$DEPLOY_HOST "cd /root/ci-cd && git pull && docker-compose up -d --build"
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /root/ci-cd
+            git pull origin main
+            docker-compose up -d --build
